@@ -1,6 +1,11 @@
 # cochlear_reg
 
-This repo implements a deep-learning-based registration network for segmenting cochlear structures (modiolus, scala tympani, scala vestibuli, the labyrinth) in metal-artifact-affected CT images (post-cochlear-implantation images).
+This repo implements a deep-learning-based technique for segmenting cochlear structures (modiolus, scala tympani, scala vestibuli, the labyrinth) in metal-artifact-affected CT images (post-cochlear-implantation images) by deforming the atlas meshes.
+
+![image](https://github.com/user-attachments/assets/3f15ba4a-7c80-4fa0-b255-b660d9ef8fed)
+
+![image](https://github.com/user-attachments/assets/2c474172-63ea-4599-92dd-08c142564f85)
+
 
 ### 1. Requirements
 System: Windows or Linux\
@@ -14,7 +19,9 @@ jupyter_core >= 5.7.2 (for reproducing the statistical results)
 
 Step1: Download the model checkpoints and them inside the checkpoints folder.
 
-Step2: Prepare the image crops around the ear in the nifti format and put them in a folder. The provided model uses 128x128x128 input volumes with 0.2x0.2x0.2 mm resolution. An example of the image crop is shown below. The model is trained for post-cochlear-implantation images but is supposed to work reasonably well for pre-cochlear-implantation images, i.e., images without metal artifacts.
+Step2: Prepare the image crops around the ear in the nifti format and put them in a folder. The provided model uses 128x128x128 input volumes with 0.2x0.2x0.2 mm resolution. An example of sagittal view of the image crop is shown below, with red being the binary masks of the labyrinth. The model is trained for post-cochlear-implantation images but is supposed to work reasonably well for pre-cochlear-implantation images, i.e., images without metal artifacts.
+
+<img src="https://github.com/user-attachments/assets/01855ae1-c85d-4a79-b4ce-7520f4372a00" width="400">
 
 Step3: Run 
 ```
