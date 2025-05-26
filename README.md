@@ -47,14 +47,14 @@ Organize training and validation image crops (in NIfTI format) into separate fol
 While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
 
 ### Step 2
-Prepare the meshes of the anatomical structures for both training and validation samples and put them into the corresponding folder, for example, ```training/mesh/structureA``` and ```validation/mesh/structureA```. The meshes can be converted from binary segmentation masks using the marching cube algorithm. An example code is provided in ```reproducibility/generate_meshes_from_binary_masks.py```
+Prepare the meshes of the anatomical structures for both training and validation samples and put them into the corresponding folder, for example, ```training/mesh/structureA``` and ```validation/mesh/structureA```. The meshes can be in the common .obj file format or our custom .mesh file format, of which the writing and read code is provided in ```dataset/cochlear_ct.py```. The meshes can be converted from binary segmentation masks using the marching cube algorithm. An example code is provided in ```reproducibility/generate_meshes_from_binary_masks.py```
 While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
 
 ### Step 3
 Run training:
 ```bash
 python train_chamfer_model \
---structure_names (e.g., structureA|structureB|structureC, different structures separated by '|', consistent with the naming convention in Step 2)
+--structure_names (e.g., structureA|structureB|structureC, different structures separated by '|', and names consistent with the convention used in Step 2)
 --train_folder <absolute_path_to_training_data> \
 --val_folder <absolute_path_to_validation_data> \
 --experiment_name <experiment_id_for_checkpoints_and_logs>
