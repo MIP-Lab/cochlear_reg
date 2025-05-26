@@ -1,67 +1,141 @@
+
 # cochlear_reg
 
-This repo implements a deep-learning-based technique for segmenting cochlear structures (modiolus, scala tympani, scala vestibuli, the labyrinth) in metal-artifact-affected CT images (post-cochlear-implantation images) by deforming the atlas meshes.
+This repository implements a deep learning–based method for segmenting cochlear structures—**modiolus**, **scala tympani**, **scala vestibuli**, and the **labyrinth**—in CT images affected by metal artifacts (e.g., post-cochlear-implantation scans). The method works by doing image registration between atlas and patient images, and then deforming the pre-defined atlas meshes into the patient space.
 
-![image](https://github.com/user-attachments/assets/3f15ba4a-7c80-4fa0-b255-b660d9ef8fed)
-
+![image](https://github.com/user-attachments/assets/3f15ba4a-7c80-4fa0-b255-b660d9ef8fed)  
 ![image](https://github.com/user-attachments/assets/2c474172-63ea-4599-92dd-08c142564f85)
 
+---
 
-### 1. Requirements
-System: Windows or Linux\
-Python >= 3.8\
-pytorch >= 1.12\
-pytorch3d >= 0.7.0 (for computing the chamfer loss)\
-pyvista >= 0.43.0, matplotlib >= 3.7.5 (for visualizing the results)\
-jupyter_core >= 5.7.2 (for reproducing the statistical results)
+## 1. Requirements
 
-### 2. Inference with the proposed chamfer model.
+- **OS:** Windows or Linux  
+- **Python:** ≥ 3.8  
+- **PyTorch:** ≥ 1.12  
+- **PyTorch3D:** ≥ 0.7.0 *(used for Chamfer loss)*  
+- **PyVista:** ≥ 0.43.0 and **Matplotlib:** ≥ 3.7.5 *(for visualization)*  
+- **jupyter_core:** ≥ 5.7.2 *(for reproducing statistical analysis)*
 
-Step1: Download the model checkpoints and them inside the checkpoints folder.
+---
 
-Step2: Prepare the image crops around the ear in the nifti format and put them in a folder. The provided model uses 128x128x128 input volumes with 0.2x0.2x0.2 mm resolution. An example of sagittal view of the image crop is shown below, with red being the binary masks of the labyrinth. The model is trained for post-cochlear-implantation images but is supposed to work reasonably well for pre-cochlear-implantation images, i.e., images without metal artifacts.
+## 2. Inference Using the Proposed Chamfer Model
+
+### Step 1
+Download the pretrained model checkpoints from [Zenodo](https://doi.org/10.5281/zenodo.15520931) and place them in the `checkpoints/` folder.
+
+### Step 2
+Prepare 3D image crops of the ear in **NIfTI format** (128×128×128, resolution: 0.2×0.2×0.2 mm) and place them in a folder.  
+The model is trained on post-implantation scans but performs reasonably well on pre-implantation (metal-free) images.
+
+Example of a sagittal slice of the cochlear image crop (red = binary mask of the labyrinth):
 
 <img src="https://github.com/user-attachments/assets/01855ae1-c85d-4a79-b4ce-7520f4372a00" width="400">
 
-Step3: Run 
-```
-python inference_chamfer_model --data_folder <absolute_url_to_the_test_nifti_files>
+### Step 3
+Run the inference command:
+```bash
+python inference_chamfer_model --data_folder <absolute_path_to_test_nifti_files>
 ```
 
-### 3. Training the proposed chamfer model.
+---
 
-Step1: Prepare the image crops around the ear in the nifti format and put them in separate training and validation folders. 128x128x128 input volumes with 0.2x0.2x0.2 mm resolution were used the our work. But other sizes and resolutions can also be used.
+## 3. Training the Proposed Chamfer Model on Custom Datasets
 
-Step2: Run 
-```
+### Step 1
+Organize training and validation image crops (in NIfTI format) into separate folders, for example, ```training/image``` and ```validation/image```.  
+While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
+
+### Step 2
+Prepare the meshes of the anatomical structures for both training and validation samples and put them into the corresponding folder, for example, ```training/mesh/structureA``` and ```validation/mesh/structureA```. The meshes can be converted from binary segmentation masks using the marching cube algorithm. An example code is provided in ```reproducibility/generate_meshes_from_binary_masks.py```
+While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
+
+### Step 3
+Run training:
+```bash
 python train_chamfer_model \
---train_folder <absolute_url_to_the_training_nifti_files> \
---val_folder <absolute_url_to_the_validation_nifti_files> \
---experiment_name <identifier_to_save_the_checkpoints_and_training_losses>
+--structure_names (e.g., structureA|structureB|structureC, different structures separated by '|', consistent with the naming convention in Step 2)
+--train_folder <absolute_path_to_training_data> \
+--val_folder <absolute_path_to_validation_data> \
+--experiment_name <experiment_id_for_checkpoints_and_logs>
 ```
 
-### 4. Reproducing the main statstical results reported in the paper.
+---
 
-Step1: Download the predicted meshes and segmentation masks obtained with different methods: the chamfer, p2p, dice models, and cGAN-ASM, nnU-Net, SegNet, ABA and Elastix methods from https://doi.org/10.5281/zenodo.15519545
+## 4. Reproducing Main Statistical Results
 
-Step2: Run reproducibility/figures.ipynb.
+### Step 1
+Download predicted meshes and segmentation masks from [Zenodo](https://doi.org/10.5281/zenodo.15519545).  
+These include outputs from Chamfer, P2P, Dice, cGAN-ASM, nnU-Net, SegNet, ABA, and Elastix.
 
-### 5. Reproducing the predicted meshes and binary masks.
-
-Ideally, we would like to be able to reproduce the predicted meshes and segmentation masks used in section 4 from the original test CT images used in the paper. However, the images we used were from a private dataset that cannot be publicly shared. Here we provide a compromised way to provide the reproducbility in terms of meshes and segmentation masks: we obtain and upload the activation maps through the first convolution layers of different models, and someone can download the 
-activation maps and pass them through the subsequent network layers to produce the predicted meshes and segmentation masks. This approach works for the chamfer, p2p, dice, nnU-Net, SegNet models. It does not work for cGAN-ASM, ABA or Elastix because they require working on the original images and because some of the codes with these methods cannot be public shared either.
-
-Step1: Download the activation maps from the following links:
-
-Step2: Run the following to obtain the predicted meshes with the chamfer, p2p, and dice models, and the predicted segmentation masks with nnU-Net and SegNet.
+### Step 2
+Run the following Jupyter notebook:
 ```
-python reproducibility generate_prediction_from_activation_maps.py
+reproducibility/figures.ipynb
 ```
-Step3: Use ```reproducibility/generate_binary_masks_from_meshes.py``` to convert the predicted meshe obtained with the chamfer, p2p, and dice models to binary masks for the evaluation of DICE (this step needs to be in Windows system becauses it relies on a .exe file).
-```
-python reproducibility generate_binary_masks_from_meshes.py
-```
-Step4: Use ```reproducibility/generate_meshes_from_binary_masks.py``` to convert the predicted segmentation masks obtained with the nnU-Net and Segment to meshes. Then use ```reproducibility/atlas_to_patient_mesh_registration.m``` to register the atlas meshes to the mask-converted patient meshes for the evaluation of the point-to-point correspondence error.
 
-The results generated from the above steps shoud be the same as those used in section 4.
+---
 
+## 5. Reproducing Predicted Meshes and Masks
+
+The original test CT images cannot be shared publicly due to dataset restrictions.  
+Instead, we provide **activation maps** from the first convolutional layers of the models. These can be used to reproduce outputs used in section 4 by forwarding them through the remaining layers.
+
+This approach supports:
+- Chamfer
+- P2P
+- Dice
+- nnU-Net
+- SegNet
+
+It does **not** support:
+- cGAN-ASM
+- ABA
+- Elastix  
+(due to reliance on original images or closed-source code)
+
+---
+
+### Step 1: Download Activation Maps
+
+Place them under `data/activation_maps/`:
+
+- [Chamfer](https://doi.org/10.5281/zenodo.15519630)  
+- [P2P](https://doi.org/10.5281/zenodo.15520101)  
+- [Dice](https://doi.org/10.5281/zenodo.15519921)  
+- [SegNet](https://doi.org/10.5281/zenodo.15520369)
+
+---
+
+### Step 2: Generate Predictions
+
+```bash
+python reproducibility/generate_prediction_from_activation_maps.py
+```
+
+---
+
+### Step 3: Convert Meshes to Binary Masks (Windows only)
+
+Convert predicted meshes (from Chamfer, P2P, Dice) into binary segmentation masks for DICE evaluation:
+```bash
+python reproducibility/generate_binary_masks_from_meshes.py
+```
+
+---
+
+### Step 4: Convert Masks to Meshes
+
+Convert masks (from nnU-Net, SegNet) to meshes:
+```bash
+python reproducibility/generate_meshes_from_binary_masks.py
+```
+
+Then register the atlas mesh to patient-specific meshes in MATLAB:
+```matlab
+reproducibility/atlas_to_patient_mesh_registration.m
+```
+
+---
+
+**Note:** The results generated from the above steps should match those downloaded in section 4 of this document.
