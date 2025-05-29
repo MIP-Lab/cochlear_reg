@@ -118,11 +118,11 @@ It does **not** support:
 
 Place them under `data/activation_maps/`:
 
-- [Chamfer](https://doi.org/10.5281/zenodo.15519630)  
-- [P2P](https://doi.org/10.5281/zenodo.15520101)  
-- [Dice](https://doi.org/10.5281/zenodo.15519921)  
-- [SegNet](https://doi.org/10.5281/zenodo.15520369)
-- [nnU-Net-MD](https://doi.org/10.5281/zenodo.15531266), [nnU-Net-STSV](https://doi.org/10.5281/zenodo.15531309), [nnU-Net-Labyrinth](https://doi.org/10.5281/zenodo.15531303)
+- [Chamfer](https://doi.org/10.5281/zenodo.15519630)  - Download and place the nifti files under 'data/activation_maps/chamfer'
+- [P2P](https://doi.org/10.5281/zenodo.15520101)  - Download and place the nifti files under 'data/activation_maps/p2p'
+- [Dice](https://doi.org/10.5281/zenodo.15519921)  - Download and place the nifti files under 'data/activation_maps/dice'
+- [SegNet](https://doi.org/10.5281/zenodo.15520369) - Download and place the nifti files under 'data/activation_maps/segnet'
+- [nnU-Net-MD](https://doi.org/10.5281/zenodo.15531266), [nnU-Net-STSV](https://doi.org/10.5281/zenodo.15531309), [nnU-Net-Labyrinth](https://doi.org/10.5281/zenodo.15531303) Download and place anywhere and specify the location in Step 2.
 ---
 
 ### Step 2: Generate Predictions
@@ -132,7 +132,7 @@ python reproducibility/generate_prediction_from_activation_maps.py
 ```
 For nnU-Net, the process is different: \
 (1) Install the nn-UNet v1 from their github repository https://github.com/MIC-DKFZ/nnUNet. Checkout the v1 branch rather than the master branch for installation. \
-(2) Set environment variables required by nnunet according to https://github.com/MIC-DKFZ/nnUNet/blob/nnunetv1/documentation/setting_up_paths.md. The ```RESULTS_FOLDER``` to needs to point to the ```checkpoints```folder of this repo. \
+(2) Set environment variables required by nnunet according to https://github.com/MIC-DKFZ/nnUNet/blob/nnunetv1/documentation/setting_up_paths.md. The ```RESULTS_FOLDER``` to needs to point to the ```checkpoints/nnUNet_trained_models```folder of this repo. \
 (3) Replace the original ```inference/predict.py``` in the nnunet code under the ```site-packages``` with our ```reproducibility/nnunet_predict.py``` (keep the original file name). This will allow the nnunet to use activation maps rather than the original images. \
 (4) Run the standard nnunet prediction command: \
 
@@ -149,11 +149,12 @@ nnUNet_predict \
 
 ---
 
-### Step 3: Convert between Mesh and Binary Masks (Windows only).
-```
-python reproducibility/post_processing_acvitation_maps.py
-```
+### Step 3: Post-processing
+To fully reproduce the meshes and binary used in Section 2, we need to (1) convert the meshes obtained from chamfer, p2p and dice models to binary masks (for DICE evaluation), (2) convert the binary masks obtained from nnunet and segnet to meshes (marching cube, as shown in Section 3 Step 2), and (3) register the atlas mesh to meshes obtained from (2) to evaluate the p2p error for nnunet and segnet.
 
-### Step 4: Do mesh registration between atlas and the mask-converted patient meshes for P2P error evaluation (Matlab).
+Unfortunately, we can not write a "run_and_generate_all.py" for this post processing as we do not know how the user would organize the files and probably do them selectively. Instead, we provide a python script (```reproducibility/mesh_to_binary_mask.py```) to convert **A** mesh to **A** binary mask, and a matlab script (```reproducibility/mesh_registration/register.m```) to register **A** mesh to **ANOTHER** mesh. Generating the results for all cases and all structures should be straightforward using a for loop after having these scripts. 
 
 ---
+
+Please contact dingjie.su@vanderbilt.edu regarding any questions about this repo.
+
