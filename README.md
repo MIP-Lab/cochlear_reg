@@ -11,7 +11,8 @@ This repository implements a deep learning–based method for segmenting cochlea
 ## 1. Requirements
 
 - **OS:** Windows or Linux  
-- **Python:** ≥ 3.8  
+- **Python:** ≥ 3.8
+- **Nibabel:** ≥ 4.0.1
 - **PyTorch:** ≥ 1.12  
 - **PyTorch3D:** ≥ 0.7.0 *(used for Chamfer loss)*  
 - **PyVista:** ≥ 0.43.0 and **Matplotlib:** ≥ 3.7.5 *(for visualization)*  
@@ -22,10 +23,10 @@ This repository implements a deep learning–based method for segmenting cochlea
 ## 2. Inference Using the Proposed Chamfer Model
 
 ### Step 1
-Download the pretrained model checkpoints from [Zenodo](https://doi.org/10.5281/zenodo.15520931) and place them in the `checkpoints/` folder.
+Download the pretrained model checkpoints and the atlas data (including activation map from the chamfer model and mesh points, but not the raw atlas image) we used from [Zenodo](https://doi.org/10.5281/zenodo.15520931). Put the checkpoints folders under ./checkpoints and the atlas folder under ./data.
 
 ### Step 2
-Prepare 3D image crops of the ear in **NIfTI format** (128×128×128, resolution: 0.2×0.2×0.2 mm) and place them in a folder.  
+Prepare 3D image crops of the ear in **NIfTI format** (128×128×128, resolution: 0.2×0.2×0.2 mm, intensity rescaled between -1 and 1) and place them in a folder.  
 The model is trained on post-implantation scans but performs reasonably well on pre-implantation (metal-free) images.
 
 Example of a sagittal slice of the cochlear image crop (red = binary mask of the labyrinth):
@@ -35,44 +36,61 @@ Example of a sagittal slice of the cochlear image crop (red = binary mask of the
 ### Step 3
 Run the inference command:
 ```bash
-python inference_chamfer_model --data_folder <absolute_path_to_test_nifti_files>
+python inference_chamfer_model_activation.py --nii_folder <absolute_path_to_test_nifti_files>
 ```
-
 ---
 
 ## 3. Training the Proposed Chamfer Model on Custom Datasets
 
 ### Step 1
-Organize training and validation image crops (in NIfTI format) into separate folders, for example, ```training/image``` and ```validation/image```.  
-While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
+Prepare the training images crops in NIfTI format. While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
 
 ### Step 2
-Prepare the meshes of the anatomical structures for both training and validation samples and put them into the corresponding folder, for example, ```training/mesh/structureA``` and ```validation/mesh/structureA```. The meshes can be in the common .obj file format or our custom .mesh file format, of which the writing and read code is provided in ```dataset/cochlear_ct.py```. The meshes can be converted from binary segmentation masks using the marching cube algorithm. An example code is provided in ```reproducibility/generate_meshes_from_binary_masks.py```
-While 128×128×128 volumes at 0.2 mm resolution were used in our work, other configurations are supported by the network structure.
+Prepare the meshes of the anatomical structures for each training image, then concate the vertices from all structure meshes and save them into a .pkl file named the same as its corresponding image (e.g., patient01.nii.gz and patient01.pkl). 
+
+Suppose you have a binary mask in NifTI format of a certain structure, you can prepare the .pkl file as follows,
+
+```
+import numpy as np
+import pickle
+import nibabel as nib
+from skimage import measure
+
+# convert the binary mask into meshes
+# If you have multiple masks (for different structures), convert them to verts one by one and concate all the vertices into a large Nx3 numpy array
+mask_data = np.array(nib.load('mask.nii.gz'))
+verts, faces, _, _ = measure.marching_cubes(mask_data, 0)
+
+# save the vertices in a .pkl file
+pickle.dump(nx3_numpy_array, open(vertices.pkl, 'wb'))
+
+# load from .pkl file
+np.load(vertices.pkl, 'rb', allow_pickle=True)
+```
 
 ### Step 3
 Run training:
 ```bash
-python train_chamfer_model \
---structure_names (e.g., structureA|structureB|structureC, different structures separated by '|', and names consistent with the convention used in Step 2)
---train_folder <absolute_path_to_training_data> \
---val_folder <absolute_path_to_validation_data> \
+python train_chamfer_model.py \
+--nii_folder <path_to_nifti_files> \
+--vtx_folder <path_to_vtx_pkl_files> \
+--atlas_name <name_of_the_atlas_case> \
 --experiment_name <experiment_id_for_checkpoints_and_logs>
 ```
+Note that 20% of the training cases will be used as the validation set automatically.
 
 ---
 
 ## 4. Reproducing Main Statistical Results
 
 ### Step 1
-Download predicted meshes and segmentation masks from [Zenodo](https://doi.org/10.5281/zenodo.15519545).  
-These include outputs from Chamfer, P2P, Dice, cGAN-ASM, nnU-Net, SegNet, ABA, and Elastix.
+Download the predicted meshes and segmentation masks from [Zenodo](https://doi.org/10.5281/zenodo.15519545).  
 
 ### Step 2
-Run the following Jupyter notebook:
-```
-reproducibility/figures.ipynb
-```
+Run ```reproducibility/plot_meshes_different_methods.py``` to reproduce the visual results reported in Fig. 6 of the paper.\
+Run the ```reproducibility/figures.ipynb``` Jupyter notebook to reproduce the quantitative results reported in Fig. 4 & 5 of the paper.
+
+Need to run them inside the ```reproducibility``` folder.
 
 ---
 
@@ -104,7 +122,7 @@ Place them under `data/activation_maps/`:
 - [P2P](https://doi.org/10.5281/zenodo.15520101)  
 - [Dice](https://doi.org/10.5281/zenodo.15519921)  
 - [SegNet](https://doi.org/10.5281/zenodo.15520369)
-
+- [nnU-Net-MD](https://doi.org/10.5281/zenodo.15531266), [nnU-Net-STSV](https://doi.org/10.5281/zenodo.15531309), [nnU-Net-Labyrinth](https://doi.org/10.5281/zenodo.15531303)
 ---
 
 ### Step 2: Generate Predictions
@@ -112,30 +130,30 @@ Place them under `data/activation_maps/`:
 ```bash
 python reproducibility/generate_prediction_from_activation_maps.py
 ```
+For nnU-Net, the process is different: \
+(1) Install the nn-UNet v1 from their github repository https://github.com/MIC-DKFZ/nnUNet. Checkout the v1 branch rather than the master branch for installation. \
+(2) Set environment variables required by nnunet according to https://github.com/MIC-DKFZ/nnUNet/blob/nnunetv1/documentation/setting_up_paths.md. The ```RESULTS_FOLDER``` to needs to point to the ```checkpoints```folder of this repo. \
+(3) Replace the original ```inference/predict.py``` in the nnunet code under the ```site-packages``` with our ```reproducibility/nnunet_predict.py``` (keep the original file name). This will allow the nnunet to use activation maps rather than the original images. \
+(4) Run the standard nnunet prediction command: \
 
----
-
-### Step 3: Convert Meshes to Binary Masks (Windows only)
-
-Convert predicted meshes (from Chamfer, P2P, Dice) into binary segmentation masks for DICE evaluation:
 ```bash
-python reproducibility/generate_binary_masks_from_meshes.py
+nnUNet_predict \
+-chk model_best \
+-tr nnUNetTrainerV2 \
+-i <path_to_the_downloaded_nnunet_activation_maps> \
+-o <path_to_save_the_predicted_binary_masks> \
+-t <602 or 604 or 606 > \ # (602 for MD, 604 for STSV and 606 for the labyrinth) \
+-m 3d_fullres \
+-f 0 \
 ```
 
 ---
 
-### Step 4: Convert Masks to Meshes
-
-Convert masks (from nnU-Net, SegNet) to meshes:
-```bash
-python reproducibility/generate_meshes_from_binary_masks.py
+### Step 3: Convert between Mesh and Binary Masks (Windows only).
+```
+python reproducibility/post_processing_acvitation_maps.py
 ```
 
-Then register the atlas mesh to patient-specific meshes in MATLAB:
-```matlab
-reproducibility/atlas_to_patient_mesh_registration.m
-```
+### Step 4: Do mesh registration between atlas and the mask-converted patient meshes for P2P error evaluation (Matlab).
 
 ---
-
-**Note:** The results generated from the above steps should match those downloaded in section 4 of this document.
