@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import math
-from pytorch3d.loss import chamfer_distance
+# from pytorch3d.loss import chamfer_distance
 
 def chamfer_loss(landmark_moving, landmark_fixed):
     loss_chamfer, _ = chamfer_distance(landmark_moving, landmark_fixed)

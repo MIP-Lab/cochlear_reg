@@ -310,8 +310,9 @@ class GlabolLocalNet(torch.nn.Module):
 
 class LocalNet(torch.nn.Module):
 
-    def __init__(self, grid_size, batch_size=1) -> None:
+    def __init__(self, grid_size, batch_size=1, use_activation_map_as_input=False) -> None:
         super(LocalNet, self).__init__()
+        self.use_activation_map_as_input = use_activation_map_as_input
         self.grid_size = grid_size
         self.batch_size = batch_size
         self.ddf_bias = torch.nn.Parameter(torch.tensor([0, 0, 0], dtype=torch.float32), requires_grad=True)
@@ -391,7 +392,8 @@ class LocalNet(torch.nn.Module):
     def forward(self, x):
         
         # down path 1
-        x = self.dp1_conv1(x)
+        if not self.use_activation_map_as_input:
+            x = self.dp1_conv1(x)
         x = self.dp1_bn1(x)
         x = relu(x)
         x_prime1 = x

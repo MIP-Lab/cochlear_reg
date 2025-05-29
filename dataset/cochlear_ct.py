@@ -45,30 +45,54 @@ def mesh_to_pyvista(vertices, triangles):
 
 class CochlearCTCrop(Dataset):
 
-    def __init__(self, data_root, aug=False) -> None:
+    def __init__(self, nii_path, vtx_path, cases, use_atlas_activation=False, atlas_case_name='default', aug=False) -> None:
         super().__init__()
-        self.data_root = data_root
-        self.vol_names = glob.glob(os.path.join(data_root + '/images', '*'))
-        self.vtx_names = [x.replace('images', 'gt_mesh_points').replace('.nii.gz', '.pkl') for x in self.vol_names]
+        self.use_atlas_activation = use_atlas_activation
+        self.nii_path = nii_path
+        self.vtx_path = vtx_path
+        self.cases = cases
+        self.atlas_case_name = atlas_case_name
         self.atlas, self.atlas_affine, self.atlas_vtx = self.load_atlas()
         self.crop_size = self.atlas.shape
         self.aug = aug
+        
     
     def __getitem__(self, index):
-        postop_ct = nib.load(self.vol_names[index]).get_fdata().astype(np.float32)
-        vtx = np.load(open(self.vtx_names[index], 'rb'), allow_pickle=True)
+        case = self.cases[index]
+        postop_ct = nib.load(f'{self.nii_path}/{case}.nii.gz').get_fdata().astype(np.float32)
+        if self.vtx_path is None:
+            # dummy vtx
+            vtx = np.array([0, 0, 0])
+        else:
+            vtx = np.load(f'{self.vtx_path}/{case}.pkl', 'rb', allow_pickle=True)
+
         if self.aug:
             [postop_ct], vtx = self.do_augmentation([postop_ct], vtx)
         # add channel dim
-        postop_ct, atlas = postop_ct[None, :], self.atlas[None, :]
+        postop_ct = postop_ct[None, :]
+        atlas = self.atlas[None, :] if not self.use_atlas_activation else self.atlas
 
         return {'vol': postop_ct, 'vtx': vtx, 'atlas': atlas.copy(), 'atlas_vtx': self.atlas_vtx.copy(), 'index': index}
 
     def load_atlas(self):
-        atlas_nii = nib.load('%s/atlas/atlas.nii.gz' % self.data_root)
-        atlas, atlas_affine = atlas_nii.get_fdata().astype(np.float32), atlas_nii.affine
-        atlas = 2 * (atlas - atlas.min()) / (atlas.max() - atlas.min()) - 1
-        atlas_vtx = np.load(open('%s/atlas/atlas_all_vtx.pkl' % self.data_root, 'rb'), allow_pickle=True)
+        # load atlas image if available
+        if not self.use_atlas_activation:
+            if self.atlas_case_name == 'default':
+                atlas_nii = nib.load('data/atlas/atlas.nii.gz')
+            else:
+                atlas_nii = nib.load(f'{self.nii_path}/{self.atlas_case_name}.nii.gz')
+                
+            atlas, atlas_affine = atlas_nii.get_fdata().astype(np.float32), atlas_nii.affine
+            atlas = 2 * (atlas - atlas.min()) / (atlas.max() - atlas.min()) - 1
+        # load atlas activation map otherwise
+        else:
+            atlas_nii = nib.load('data/atlas/atlas_activation_map_chamfer.nii.gz')
+            atlas, atlas_affine = atlas_nii.get_fdata().astype(np.float32), atlas_nii.affine
+
+        if self.atlas_case_name == 'default':
+            atlas_vtx = np.load(open('data/atlas/atlas_all_vtx.pkl', 'rb'), allow_pickle=True)
+        else:
+            atlas_vtx = np.load(open(f'{self.vtx_path}/{self.atlas_case_name}.pkl', 'rb'), allow_pickle=True)
         return atlas, atlas_affine, atlas_vtx
 
     def do_augmentation(self, images, points):
@@ -95,4 +119,4 @@ class CochlearCTCrop(Dataset):
 
 
     def __len__(self):
-        return len(self.vol_names)
+        return len(self.cases)
