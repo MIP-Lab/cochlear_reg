@@ -21,13 +21,11 @@ atlas_vtx = np.load(open('../data/atlas/atlas_all_vtx.pkl', 'rb'), allow_pickle=
 input_size = (128, 128, 128)
 
 chamfer_model = LocalNet(input_size)
-# chamfer_model1 = LocalNet(input_size)
 p2p_model = LocalNet(input_size)
 dice_model = LocalNet(input_size)
 segnet = SharedSkipUNet(n_labels=4)
 
 chamfer_model.load_state_dict(torch.load('../checkpoints/Exp_task16-kcl-chamfer-reg4p0-post_1/checkpoints/best.pth')['model'])
-# chamfer_model1.load_state_dict(torch.load('../checkpoints/Exp_task16-kcl-chamfer-reg4p0-post_1/checkpoints/best.pth')['model'])
 p2p_model.load_state_dict(torch.load('../checkpoints/Exp_task06-kcl-p2p-reg4p0-post_1/checkpoints/best.pth')['model'])
 dice_model.load_state_dict(torch.load('../checkpoints/Exp_task51-kcl-chamfer0-dice-mse0-cc0-reg4p0-post_1/checkpoints/best.pth')['model'])
 segnet.load_state_dict(torch.load('../checkpoints/Exp_shared_skip_unet_cochlear_post_1/checkpoints/best.pth')['model'])
@@ -49,10 +47,13 @@ p2p_model.eval()
 dice_model.eval()
 segnet.eval()
 
-
-atlas_nii = nib.load('../data/atlas/atlas.nii.gz').get_fdata().astype(np.float32)
-atlas = torch.from_numpy(atlas_nii).to('cuda')[None, None]
-atlas = 2 * (atlas - atlas.min()) / (atlas.max() - atlas.min()) - 1
+# create folder
+for method in ['chamfer', 'p2p', 'dice', 'segnet']:
+    for structure in ['MD', 'ST', 'SV', 'CC']:
+        try:
+            os.makedirs(f'../data/predictions_from_activation/{method}/{structure}')
+        except FileExistsError:
+            raise
 
 cases = [item.replace('.nii.gz', '') for item in os.listdir('../data/images')]
 
